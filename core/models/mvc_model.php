@@ -15,6 +15,7 @@ class MvcModel {
     public $validation_error_html = null;
     public $schema = null;
     public $wp_post = null;
+	public $join_type = 'JOIN';
     private $data_validator = null;
     protected $db_adapter = null;
     private $wp_post_adapter = null;
@@ -352,11 +353,11 @@ class MvcModel {
                 if (is_string($join)) {
 					$join_name = $join;
 					$join_model_name = $join;
-					$join_type = 'JOIN';
+					$join_type = $this->join_type;
 				} else {
 					$join_name = $key;
 					$join_model_name = isset($join['class']) ? $join['class'] : $key;
-					$join_type  = isset($join['type']) ? $join['type'] : 'JOIN';
+					$join_type  = isset($join['type']) ? $join['type'] : $this->join_type;
 				}
 
 				if (!empty($this->associations[$join_name])) {
