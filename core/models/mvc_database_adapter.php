@@ -127,10 +127,13 @@ class MvcDatabaseAdapter {
             
             if(in_array($value, $functions) || is_null($value)){
                 if((is_null($value) || $value === 'NULL')){
-                    if(trim($operator) == "=")
+                    if(trim($operator) == "="){
                         $operator = " IS ";
-                    else if(trim($operator) == "!=")
+                    }
+                    else if(trim($operator) == "!="){
                         $operator = " IS NOT ";
+                    }
+                    $value = "NULL";
                 }
                 $sql_clauses[] = $this->escape($key).$operator.$value;
             }
@@ -160,12 +163,12 @@ class MvcDatabaseAdapter {
     public function get_set_sql($data) {
         $clauses = array();
         foreach ($data as $key => $value) {
-            if (is_string($value) || is_numeric($value)) {
-                $clauses[] = $key.' = "'.$this->escape($value).'"';
-            }
-            else if($value == null){
+            if ($value == null) {
                 $clauses[] = $key.' = NULL';
             }
+            else if (is_string($value) || is_numeric($value)) {
+                $clauses[] = $key . ' = "' . $this->escape($value) . '"';
+            }            
         }
         $sql = implode(', ', $clauses);
         return $sql;

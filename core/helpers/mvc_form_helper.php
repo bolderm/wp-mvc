@@ -6,7 +6,8 @@ class MvcFormHelper extends MvcHelper {
         $defaults = array(
             'action' => $this->controller->action,
             'controller' => MvcInflector::tableize($model_name),
-            'public' => false
+            'public' => false,
+            'enctype' => 'application/x-www-form-urlencoded'
         );
         $options = array_merge($defaults, $options);
         $this->model_name = $model_name;
@@ -18,11 +19,11 @@ class MvcFormHelper extends MvcHelper {
         if ($object_id) {
             $router_options['id'] = $object_id;
         }
-        
+
         if ($options['public']) {
-            $html = '<form action="'.MvcRouter::public_url($router_options).'" method="post">';
+            $html = '<form enctype="'.$options['enctype'].'" action="'.MvcRouter::public_url($router_options).'" method="post">';
         } else {
-            $html = '<form action="'.MvcRouter::admin_url($router_options).'" method="post">';
+            $html = '<form enctype="'.$options['enctype'].'" action="'.MvcRouter::admin_url($router_options).'" method="post">';
         }
         
         if ($object_id) {
@@ -32,8 +33,14 @@ class MvcFormHelper extends MvcHelper {
     }
     
     public function end($label='Submit') {
-        $html = '<div><input type="submit" value="'.$this->esc_attr($label).'" /></div>';
+        $html = "";
+        // Allows the omission of Submit button from end of form if $label == false. Useful for using custom submit buttons with more specific stylings etc..
+        if ($label) {
+            $html = '<div><input type="submit" value="'.$this->esc_attr($label).'" /></div>';
+        }
+
         $html .= '</form>';
+
         return $html;
     }
     
@@ -58,6 +65,20 @@ class MvcFormHelper extends MvcHelper {
             MvcError::fatal('Field "'.$field_name.'" not found for use in a form input.');
             return '';
         }
+    }
+
+    public function file_input($field_name, $options=array()) {
+        $defaults = array(
+            'id' => $this->input_id($field_name),
+            'name' => $this->input_name($field_name),
+            'type' => 'file'
+        );
+        $options = array_merge($defaults, $options);
+        $attributes_html = self::attributes_html($options, 'input');
+        $html = $this->before_input($field_name, $options);
+        $html .= '<input'.$attributes_html.' />';
+        $html .= $this->after_input($field_name, $options);
+        return $html;
     }
     
     public function text_input($field_name, $options=array()) {
@@ -114,10 +135,14 @@ class MvcFormHelper extends MvcHelper {
     }
     
     public function hidden_input($field_name, $options=array()) {
+    	
+    	$value = empty($this->object->{$field_name}) ? '' : $this->object->{$field_name};
+    	
         $defaults = array(
             'id' => $this->input_id($field_name),
             'name' => $this->input_name($field_name),
-            'type' => 'hidden'
+            'type' => 'hidden',
+            'value' => $value
         );
         $options = array_merge($defaults, $options);
         $attributes_html = self::attributes_html($options, 'input');
@@ -138,6 +163,45 @@ class MvcFormHelper extends MvcHelper {
         $html .= $this->after_input($field_name, $options);
         return $html;
     }
+
+    public function editor($field_name, array $options = array()) {
+        $id = $this->input_id($field_name);
+
+        $defaults = array(
+            'id' => $id,
+            'name' => $this->input_name($field_name),
+            'label' => MvcInflector::titleize($field_name),
+            'content' => empty($this->object->$field_name) ? '' : $this->object->$field_name,
+            'rows' => 10,
+            'editor_css' => '',
+            'media_buttons' => true,
+            'minimal' => false,
+            'statusbar' => true,
+            'quicktags' => true
+        );
+        $options = array_merge($defaults, $options);
+
+        ob_start();
+
+        if (!empty($options['label']))
+            echo '<label for="' . $id . '">' . $options['label'] . '</label>';
+
+        wp_editor($options['content'], $id, array(
+            'editor_class' => $options['required'],
+            'media_buttons' => $options['media_buttons'],
+            'textarea_name' => $options['name'],
+            'textarea_rows' => $options['rows'],
+            'teeny' => $options['minimal'],
+            'tinymce' => array(
+                'statusbar' => $options['statusbar']
+            ),
+            'editor_css' => $options['editor_css'],
+            'quicktags' => $options['quicktags'],
+            'wpautop' => false
+        ));
+
+        return ob_get_clean();
+    }
     
     public function select($field_name, $options=array()) {
         $html = $this->before_input($field_name, $options);
@@ -146,6 +210,34 @@ class MvcFormHelper extends MvcHelper {
         return $html;
     }
     
+    function select_from_model($field_name, MvcModel $model, $find_options = array(), $select_options = array()) {
+    
+    	$default_find_options = array(
+    			'selects' => array($model->primary_key, $model->display_field),
+    			'order' => $model->display_field
+    	);
+    
+    	$find_options = array_merge($default_find_options, $find_options);
+    
+    	$values =  $model->find($find_options);
+    
+    	$key = $value->__id;
+    	$value = $value->__name;
+    
+    	$default_options = array(
+    			'id' => $this->model_name.'_'.$field_name.'_select',
+    			'name' => 'data['.$this->model_name.']['.$field_name.']',
+    			'label' => MvcInflector::titleize($field_name),
+    			'empty' => true,
+    			'value' => empty($this->object->$field_name) ? '' : $this->object->$field_name,
+    			'options' => $values
+    	);
+    
+    	$select_options = array_merge($default_options, $select_options);
+    
+    	return $this->select($default_options['name'], $select_options);
+    }
+
     public function select_tag($field_name, $options=array()) {
         $defaults = array(
             'empty' => false,
@@ -184,6 +276,7 @@ class MvcFormHelper extends MvcHelper {
         $html = '<button'.$attributes_html.'>'.$text.'</button>';
         return $html;
     }
+
     
     public function belongs_to_dropdown($model_name, $select_options, $options=array()) {
     
